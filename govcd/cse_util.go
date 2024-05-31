@@ -5,9 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	semver "github.com/hashicorp/go-version"
-	"github.com/vmware/go-vcloud-director/v2/types/v56"
-	"github.com/vmware/go-vcloud-director/v2/util"
 	"net"
 	"net/url"
 	"regexp"
@@ -15,6 +12,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	semver "github.com/hashicorp/go-version"
+	"github.com/vmware/go-vcloud-director/v2/types/v56"
+	"github.com/vmware/go-vcloud-director/v2/util"
 )
 
 // getCseComponentsVersions gets the versions of the subcomponents that are part of Container Service Extension.
@@ -967,11 +968,11 @@ func getCseTemplate(cseVersion semver.Version, templateName string) (string, err
 	}
 	versionSegments := cseVersion.Segments()
 	// We try with major.minor.patch
-	fullTemplatePath := fmt.Sprintf("cse/%d.%d.%d/%s.tmpl", versionSegments[0], versionSegments[1], versionSegments[2], templateName)
+	fullTemplatePath := fmt.Sprintf("cse/%d.%d.%d-bb/%s.tmpl", versionSegments[0], versionSegments[1], versionSegments[2], templateName)
 	result, err := cseFiles.ReadFile(fullTemplatePath)
 	if err != nil {
 		// We try now just with major.minor
-		fullTemplatePath = fmt.Sprintf("cse/%d.%d/%s.tmpl", versionSegments[0], versionSegments[1], templateName)
+		fullTemplatePath = fmt.Sprintf("cse/%d.%d-bb/%s.tmpl", versionSegments[0], versionSegments[1], templateName)
 		result, err = cseFiles.ReadFile(fullTemplatePath)
 		if err != nil {
 			return "", fmt.Errorf("could not read Go template '%s.tmpl' for CSE version %s", templateName, cseVersion.String())

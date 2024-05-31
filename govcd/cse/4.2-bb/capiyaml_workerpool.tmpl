@@ -1,0 +1,77 @@
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: VCDMachineTemplate
+metadata:
+  name: "{{.ClusterName}}-{{.NodePoolName}}-pool"
+  namespace: "{{.TargetNamespace}}"
+spec:
+  template:
+    spec:
+      catalog: "{{.Catalog}}"
+      template: "{{.VAppTemplate}}"
+      sizingPolicy: "{{.NodePoolSizingPolicy}}"
+      placementPolicy: "{{.NodePoolPlacementPolicy}}"
+      storageProfile: "{{.NodePoolStorageProfile}}"
+      diskSize: "{{.NodePoolDiskSize}}"
+      enableNvidiaGPU: {{.NodePoolEnableGpu}}
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: "{{.ClusterName}}-{{.NodePoolName}}-pool"
+  namespace: "{{.TargetNamespace}}"
+spec:
+  template:
+    spec:
+      users:
+        - name: root
+          sshAuthorizedKeys:
+            - "{{.SshPublicKey}}"
+      useExperimentalRetryJoin: true
+      preKubeadmCommands:
+        - mv /etc/ssl/certs/custom_certificate_*.crt /usr/local/share/ca-certificates && update-ca-certificates
+      {{- if .Base64Certificates}}
+      files:
+        {{- range $i, $cert := .Base64Certificates}}
+        - encoding: base64
+          content: {{$cert}}
+          owner: root
+          permissions: "0644"
+          path: /etc/ssl/certs/custom_certificate_{{$i}}.crt
+        {{- end}}
+      {{- end}}
+      joinConfiguration:
+        nodeRegistration:
+          criSocket: /run/containerd/containerd.sock
+          kubeletExtraArgs:
+            node-labels: "pool={{.NodePoolName}},pool-type={{.NodePoolName}}"
+            eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+            cloud-provider: external
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: "{{.ClusterName}}-{{.NodePoolName}}-pool"
+  namespace: "{{.TargetNamespace}}"
+  annotations:
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "1"
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "5"
+spec:
+  clusterName: "{{.ClusterName}}"
+  replicas: {{.NodePoolMachineCount}}
+  selector:
+    matchLabels: null
+  template:
+    spec:
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+          name: "{{.ClusterName}}-{{.NodePoolName}}-pool"
+          namespace: "{{.TargetNamespace}}"
+      clusterName: "{{.ClusterName}}"
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+        kind: VCDMachineTemplate
+        name: "{{.ClusterName}}-{{.NodePoolName}}-pool"
+        namespace: "{{.TargetNamespace}}"
+      version: "{{.KubernetesVersion}}"
