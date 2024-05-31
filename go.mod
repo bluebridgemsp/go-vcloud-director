@@ -1,4 +1,4 @@
-module github.com/vmware/go-vcloud-director/v2
+module github.com/bluebridgemsp/go-vcloud-director/v2
 
 go 1.21
 
