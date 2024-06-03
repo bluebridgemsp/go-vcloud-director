@@ -417,8 +417,12 @@ func cseConvertToCseKubernetesClusterType(rde *DefinedEntity) (*CseKubernetesClu
 				if _, ok := workerPools[name]; !ok {
 					workerPools[name] = CseWorkerPoolSettings{}
 				}
+
+				// Blue Bridge MSP changes: as we changed pool naming we should extract pool name from MachineDeployment name
+				workerPoolName := strings.TrimPrefix(strings.TrimSuffix(name, "-pool"), result.Name + "-")
+				
 				workerPool := workerPools[name]
-				workerPool.Name = name
+				workerPool.Name = workerPoolName
 				for _, policy := range computePolicies {
 					if sizingPolicyName == policy.VdcComputePolicyV2.Name && policy.VdcComputePolicyV2.IsSizingOnly {
 						workerPool.SizingPolicyId = policy.VdcComputePolicyV2.ID
@@ -576,8 +580,8 @@ func (input *CseClusterSettings) validate() error {
 		if _, alreadyExists := existingWorkerPools[workerPool.Name]; alreadyExists {
 			return fmt.Errorf("the names of the Worker Pools must be unique, but '%s' is repeated", workerPool.Name)
 		}
-		if workerPool.MachineCount < 1 {
-			return fmt.Errorf("number of Worker Pool '%s' nodes must higher than 0, but it was '%d'", workerPool.Name, workerPool.MachineCount)
+		if workerPool.MachineCount < 0 {
+			return fmt.Errorf("number of Worker Pool '%s' nodes be must not less than 0, but it was '%d'", workerPool.Name, workerPool.MachineCount)
 		}
 		if workerPool.DiskSizeGi < 20 {
 			return fmt.Errorf("disk size for the Worker Pool '%s' in Gibibytes (Gi) must be at least 20, but it was '%d'", workerPool.Name, workerPool.DiskSizeGi)

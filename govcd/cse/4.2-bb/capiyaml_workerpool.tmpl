@@ -53,11 +53,13 @@ metadata:
   name: "{{.ClusterName}}-{{.NodePoolName}}-pool"
   namespace: "{{.TargetNamespace}}"
   annotations:
-    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "1"
-    cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "5"
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "5"
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"
 spec:
   clusterName: "{{.ClusterName}}"
+  {{ if ne .NodePoolMachineCount "0" -}}
   replicas: {{.NodePoolMachineCount}}
+  {{ end -}}
   selector:
     matchLabels: null
   template:

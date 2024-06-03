@@ -185,7 +185,11 @@ func cseUpdateWorkerPoolsInYaml(yamlDocuments []map[string]interface{}, workerPo
 			continue
 		}
 
-		workerPoolName := traverseMapAndGet[string](d, "metadata.name")
+		// Blue Bridge MSP modification: enbale autoscaler support
+		// If MachineCount is set to 0, it means that MachineDeployment replicas atribute should not be synced in order to avoid conflict with autoscaler
+		// To disable replicas sync by projecto, replices field should be removed from CapiYaml
+		clusterName := strings.TrimSuffix(traverseMapAndGet[string](d, "metadata.namespace"), "-ns")
+		workerPoolName := strings.TrimPrefix(strings.TrimSuffix(traverseMapAndGet[string](d, "metadata.name"), "-pool"), clusterName + "-")
 		if workerPoolName == "" {
 			return fmt.Errorf("the MachineDeployment 'metadata.name' field is empty")
 		}
@@ -204,9 +208,18 @@ func cseUpdateWorkerPoolsInYaml(yamlDocuments []map[string]interface{}, workerPo
 		if workerPools[workerPoolToUpdate].MachineCount < 0 {
 			return fmt.Errorf("incorrect machine count for worker pool %s: %d. Should be at least 0", workerPoolToUpdate, workerPools[workerPoolToUpdate].MachineCount)
 		}
+		
+		// Blue Bridge MSP modification: enbale autoscaler support
+		// If MachineCount is set to 0, it means that MachineDeployment replicas atribute should not be synced in order to avoid conflict with autoscaler
+		// To disable replicas sync by projecto, replices field should be removed from CapiYaml
+		if workerPools[workerPoolToUpdate].MachineCount == 0 {
+			delete(d["spec"].(map[string]interface{}), "replicas")
+			updated++
+		} else {
+			d["spec"].(map[string]interface{})["replicas"] = float64(workerPools[workerPoolToUpdate].MachineCount) // As it was originally unmarshalled as a float64
+			updated++
+		}
 
-		d["spec"].(map[string]interface{})["replicas"] = float64(workerPools[workerPoolToUpdate].MachineCount) // As it was originally unmarshalled as a float64
-		updated++
 	}
 	if updated != len(workerPools) {
 		return fmt.Errorf("could not update all the Node pools. Updated %d, expected %d", updated, len(workerPools))
